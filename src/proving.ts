@@ -1,12 +1,71 @@
 import { MASTER_PASSWORD } from "./password";
 
+// import { groth16 } from "snarkjs";
+
+const snarkjs = require("snarkjs");
+import fs from "fs";
+import { createHash } from "crypto";
+import path from "path";
+
+const CIRCUIT_PATH = "./circuits";
+
+class Circuit {
+  basePath: string;
+  name: string;
+
+  constructor(basePath: string, name: string) {
+    this.basePath = basePath;
+    this.name = name;
+  }
+
+  zKey(): string {
+    return path.join(this.basePath, this.name + ".zkey");
+  }
+
+  vKey(): string {
+    return path.join(this.basePath, this.name + ".vkey.json");
+  }
+
+  wasm(): string {
+    return path.join(this.basePath, this.name + ".wasm");
+  }
+}
+
+interface proof {
+  proof: any;
+  publicSignals: any;
+}
 /**
  * This interface represents the full set of values that represent a
  * proof of knowledge of the master password.
  */
 export interface FullProof {
-  // TODO: fill this in
   valid: boolean;
+  circuit: Circuit;
+  proof: proof;
+}
+
+// converts a given string input into bigIntForm
+function hexHash(input: string): BigInt {
+  return BigInt(`0x${createHash("sha256").update(input).digest("hex")}`);
+}
+
+async function genreateCircuit(
+  circuit: Circuit,
+  input: {}
+): Promise<proof | undefined> {
+  // we use groth since this is specified in circom compilation step.
+  // TODO -- does this work if I use another prover??
+  const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+    input,
+    circuit.wasm(),
+    circuit.zKey()
+  );
+
+  return {
+    proof,
+    publicSignals,
+  };
 }
 
 /**
@@ -15,8 +74,20 @@ export interface FullProof {
 export async function generateProofOfPasswordKnowledge(
   password: string
 ): Promise<FullProof> {
+  console.log("generating proof of password....");
+
+  const circuit = new Circuit(CIRCUIT_PATH, "hash");
+
+  const proof = await genreateCircuit(circuit, { x: hexHash(password) });
+
+  if (!proof) {
+    throw new Error("unable to generate proof");
+  }
+
   return {
+    circuit,
     valid: password === MASTER_PASSWORD,
+    proof: proof,
   };
 }
 
@@ -27,5 +98,22 @@ export async function generateProofOfPasswordKnowledge(
 export async function verifyPasswordKnowledge(
   fullProof: FullProof
 ): Promise<boolean> {
-  return fullProof.valid;
+  console.log(`verifying proof...${fullProof}`);
+  console.log(fullProof.circuit);
+
+  const c = new Circuit(fullProof.circuit.basePath, fullProof.circuit.name);
+
+  // Verify that circuit construction is valid.
+  const data = fs.readFileSync(c.vKey());
+  const vKey = JSON.parse(data.toString());
+
+  console.log(`vkey: ${JSON.stringify(vKey)}`);
+
+  const res = await snarkjs.groth16.verify(
+    vKey,
+    fullProof.proof.publicSignals,
+    fullProof.proof.proof
+  );
+
+  return res;
 }

@@ -11,7 +11,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 // Landing page of our website.
 app.get("/", (req: express.Request, res: express.Response) => {
-  res.sendFile(path.join(__dirname, "./login.html"));
+  res.sendFile(path.join(__dirname, "./index.html"));
 });
 
 // Route which verifies a ZKP which proves knowledge of the master password

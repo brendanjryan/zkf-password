@@ -4,8 +4,10 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "@web/dev-server": "^0.2.2",
     "body-parser": "^1.20.2",
     "express": "^4.18.2",
+    "serve-static": "^1.15.0",
     "snarkjs": "^0.7.0"
   },
   "devDependencies": {
@@ -23,6 +25,7 @@
     "node": ">=16"
   },
   "scripts": {
+    "build": "npx tsc",
     "circom:dev": "hardhat circom --deterministic --debug --verbose",
     "circom:prod": "hardhat circom --verbose",
     "test": "hardhat test",

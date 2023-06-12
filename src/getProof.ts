@@ -12,14 +12,12 @@ async function run() {
     return;
   }
 
-  console.log(`generating a ZKP for password '${password}'`);
-  console.log();
+  console.log(`generating a ZKP for password '${password}'\n`);
 
   const fullProof = await generateProofOfPasswordKnowledge(password);
   const stringifiedFullProof = JSON.stringify(fullProof, null, 2);
 
   console.log(stringifiedFullProof);
-  console.log();
 }
 
 run().then(() => {
